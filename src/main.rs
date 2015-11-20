@@ -30,7 +30,7 @@ fn bake_mode_args(mode: BakeMode) -> Vec<String> {
     let par_args = vec![format!("-Ccodegen-units={}", num_cpus::get())];
 
     let gold_args = if have_gold() {
-        vec!["--link-args=--f-use-ld=gold"]
+        vec!["--link-args=--fuse-ld=gold"]
     } else { vec![] };
 
     let common_args = vec![
