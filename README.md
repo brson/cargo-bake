@@ -1,9 +1,15 @@
 # cargo-bake
 
-Compile Rust faster with smarter defaults. Replaces `cargo build`.
+Compile Rust faster with smarter defaults. Replaces `cargo build`. The
+default bake compiles more quickly than Cargo's `--release` and
+produce reasonably fast code.
 
-The default bake made compiles more quickly than Cargo's `--release`
-and produce reasonably fast code.
+Usage:
+
+```sh
+$ cargo install cargo-bake
+$ cargo bake <other-cargo-build-options>
+```
 
 The default ("normal") bake produces compiler flags more-or-less
 like
@@ -24,6 +30,10 @@ Cargo's release, and a `--glacial` bake, which additionally adds LTO.
 
 By default cargo-bake, in all modes, reduces debuginfo generation to
 line numbers only. Use the `--debug` flag to turn on full debuginfo.
+
+## How fast?
+
+TODO
 
 ## Future work
 
