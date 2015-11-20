@@ -1,4 +1,4 @@
 [root]
-name = "cargo-bake"
+name = "bake"
 version = "0.1.0"
 
