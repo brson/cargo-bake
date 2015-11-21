@@ -13,7 +13,7 @@ fn bake_mode_args(mode: BakeMode) -> Vec<String> {
             "-Copt-level=0",
             ],
         BakeMode::Normal => vec![
-            "-Copt-level=1",
+            "-Copt-level=2",
             "-Cinline-threshold=25",
             "-Cno-vectorize-loops",
             ],

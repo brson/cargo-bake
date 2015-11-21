@@ -15,7 +15,7 @@ The default ("normal") bake produces compiler flags more-or-less
 like
 
 ```
--C opt-level=1
+-C opt-level=2
 -C inline-threshold=25
 -C no-vectorize-loops
 -C codegen-units=$NUM_CPUS_UP_TO_4
@@ -39,23 +39,23 @@ Run `cargo bake --compare` to compare compile time of `cargo build
 ```
 html5ever:
 
-cargo build --release: 27304
-cargo bake: 25322
+cargo build --release: 27467
+cargo bake: 25733
 
 hyper:
 
-cargo build --release: 30292
-cargo bake: 27208
+cargo build --release: 30156
+cargo bake: 26743
 
 regex:
 
-cargo build --release: 7316
-cargo bake: 5453
+cargo build --release: 7006
+cargo bake: 5078
 
 image:
 
-cargo build --release: 52488
-cargo bake: 52798
+cargo build --release: 50449
+cargo bake: 50928
 ```
 
 ## Future work
