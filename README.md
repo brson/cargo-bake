@@ -36,7 +36,27 @@ Run `cargo bake --compare` to compare compile time of `cargo build
 
 ## How fast?
 
-TODO
+```
+html5ever:
+
+cargo build --release: 27304
+cargo bake: 25322
+
+hyper:
+
+cargo build --release: 30292
+cargo bake: 27208
+
+regex:
+
+cargo build --release: 7316
+cargo bake: 5453
+
+image:
+
+cargo build --release: 52488
+cargo bake: 52798
+```
 
 ## Future work
 
