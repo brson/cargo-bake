@@ -1,3 +1,4 @@
+#[derive(Clone, Copy)]
 enum BakeMode {
     Fast, Normal, Slow, Glacial
 }
@@ -12,7 +13,7 @@ fn bake_mode_args(mode: BakeMode) -> Vec<String> {
             "-Copt-level=0",
             ],
         BakeMode::Normal => vec![
-            "-Copt-level=2",
+            "-Copt-level=1",
             "-Cinline-threshold=25",
             "-Cno-vectorize-loops",
             ],
@@ -27,10 +28,10 @@ fn bake_mode_args(mode: BakeMode) -> Vec<String> {
             ]
     };
 
-    let par_args = vec![format!("-Ccodegen-units={}", num_cpus::get())];
+    let par_args = vec![format!("-Ccodegen-units={}", codegen_units())];
 
     let gold_args = if have_gold() {
-        vec!["-Clink-args=--fuse-ld=gold"]
+        vec!["-Clink-args=-fuse-ld=gold"]
     } else { vec![] };
 
     let common_args = vec![
@@ -48,7 +49,7 @@ fn bake_mode_args(mode: BakeMode) -> Vec<String> {
 fn debug_mode_args(mode: DebugMode) -> Vec<String> {
     let args = match mode {
         DebugMode::Off => vec![
-            "-Cdebuginfo=1",
+            "-Cdebuginfo=0",
             ],
         DebugMode::On => vec![
             "-Cdebuginfo=2",
@@ -58,11 +59,26 @@ fn debug_mode_args(mode: DebugMode) -> Vec<String> {
     args.into_iter().map(str::to_owned).collect()
 }
 
+fn cargo_args_for_bake_mode(mode: BakeMode) -> Vec<String> {
+    let args = match mode {
+        BakeMode::Slow => vec![],
+        _ => vec!["--release"]
+    };
+
+    args.into_iter().map(str::to_owned).collect()
+}
+
+fn codegen_units() -> usize {
+    let cpus = num_cpus::get();
+    if cpus > 4 { 4 } else { cpus }
+}
+
 #[macro_use]
 extern crate log;
 #[macro_use]
 extern crate env_logger;
 extern crate num_cpus;
+extern crate stopwatch;
 
 use std::env::{self, VarError};
 use std::error::Error as StdError;
@@ -70,13 +86,17 @@ use std::fmt::{self, Display, Formatter};
 use std::io;
 use std::fs;
 use std::process::{self, Command};
+use stopwatch::Stopwatch;
 
 fn main() {
     env_logger::init().unwrap();
 
     let ref args: Vec<String> = env::args().collect();
+
     let exit_code;
-    if !running_as_rustc_proxy() {
+    if args.len() > 1 && args[1] == "--compare" {
+        exit_code = do_comparison();
+    } else if !running_as_rustc_proxy() {
         turn_on_rustc_proxy();
         let cargo_name = get_cargo_name();
         exit_code = run_cargo(cargo_name, args);
@@ -94,6 +114,64 @@ fn main() {
     };
 
     process::exit(exit_code);
+}
+
+fn do_comparison() -> Result<i32, Error> {
+    let cargo_name = get_cargo_name();
+
+    println!("fetching");
+    let mut child = try!(get_command(cargo_name.clone())
+                     .arg("fetch")
+                     .spawn());
+    let exit_status = try!(child.wait());
+    let exit_code = exit_status.code().unwrap_or(1);
+    if exit_code != 0 {
+        return Ok(exit_code)
+    }
+
+    println!("cleaning");
+    let mut child = try!(get_command(cargo_name.clone())
+                         .arg("clean")
+                         .spawn());
+    let exit_status = try!(child.wait());
+    let exit_code = exit_status.code().unwrap_or(1);
+    if exit_code != 0 {
+        return Ok(exit_code)
+    }
+
+    println!("testing 'cargo build --release'");
+    let sw1 = Stopwatch::start_new();
+    let mut child = try!(get_command(cargo_name.clone())
+                         .arg("build")
+                         .arg("--release")
+                         .spawn());
+    let exit_status = try!(child.wait());
+    let exit_code = exit_status.code().unwrap_or(1);
+    if exit_code != 0 {
+        return Ok(exit_code)
+    }
+    let elapsed1 = sw1.elapsed_ms();
+
+    println!("cleaning");
+    let mut child = try!(get_command(cargo_name.clone())
+                         .arg("clean")
+                         .spawn());
+    let exit_status = try!(child.wait());
+    let exit_code = exit_status.code().unwrap_or(1);
+    if exit_code != 0 {
+        return Ok(exit_code)
+    }
+
+    println!("testing 'cargo bake'");
+    let sw2 = Stopwatch::start_new();
+    turn_on_rustc_proxy();
+    let exit_code = try!(run_cargo(cargo_name, &[String::new()]));
+    let elapsed2 = sw2.elapsed_ms();
+
+    println!("cargo build --release: {}", elapsed1);
+    println!("cargo bake: {}", elapsed2);
+
+    Ok(exit_code)
 }
 
 fn running_as_rustc_proxy() -> bool {
@@ -141,10 +219,13 @@ fn run_cargo(cargo_name: String, args: &[String]) -> Result<i32, Error>  {
     // passed to cargo.
     let args = strip_bake_args(args);
 
+    let cargo_args = cargo_args_for_bake_mode(bake);
+
     info!("cargo args: {:?}", args);
 
     let mut child = try!(get_command(cargo_name)
                          .arg("build")
+                         .args(&cargo_args)
                          .args(&args)
                          .spawn());
     let exit_status = try!(child.wait());
@@ -152,6 +233,8 @@ fn run_cargo(cargo_name: String, args: &[String]) -> Result<i32, Error>  {
 }
 
 fn run_rustc(rustc_name: String, args: &[String]) -> Result<i32, Error> {
+    use std::iter::Extend;
+
     let args = &args[1..];
 
     // Remove provided options to rustc that may interfere with ours
@@ -162,13 +245,15 @@ fn run_rustc(rustc_name: String, args: &[String]) -> Result<i32, Error> {
 
     let bake_args = bake_mode_args(bake);
     let debug_args = debug_mode_args(debug);
-    
+
+    let mut args = args;
+    args.extend(bake_args);
+    args.extend(debug_args);
+
     info!("rustc args: {:?}", args);
 
     let mut child = try!(get_command(rustc_name)
                          .args(&args)
-                         .args(&bake_args)
-                         .args(&debug_args)
                          .spawn());
     let exit_status = try!(child.wait());
     Ok(exit_status.code().unwrap_or(1))
@@ -207,12 +292,25 @@ fn strip_bake_args(args: &[String]) -> Vec<String> {
 fn strip_opt_args(args: &[String]) -> Vec<String> {
     let opt_args = ["-g"];
 
-    let args = args.iter();
-    let mut opt_args = opt_args.iter();
+    let opt_args: Vec<_> = args.iter().filter(|a| {
+        opt_args.iter().all(|b| a != b)
+    }).cloned().collect();
 
-    args.filter(|a| !opt_args.any(|b| a == b))
-        .cloned()
-        .collect()
+    let mut opt_args_ = vec![];
+
+    // Get rid of -C opt-level
+    let mut i = 0;
+    while i < opt_args.len() - 1 {
+        if opt_args[i] == "-C" && opt_args[i + 1].contains("opt-level") {
+            i += 2;
+            continue;
+        }
+        opt_args_.push(opt_args[i].clone());
+        i += 1;
+    }
+    opt_args_.push(opt_args[opt_args.len() - 1].clone());
+
+    opt_args_
 }
 
 fn get_bake_mode_from_args(args: &[String]) -> Result<BakeMode, Error> {

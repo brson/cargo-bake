@@ -15,10 +15,10 @@ The default ("normal") bake produces compiler flags more-or-less
 like
 
 ```
--C opt-level=2
+-C opt-level=1
 -C inline-threshold=25
 -C no-vectorize-loops
--C codegen-units=$NUM_CPUS
+-C codegen-units=$NUM_CPUS_UP_TO_4
 --link-args=--fuse-ld=gold
 -Z no-verify
 -C debuginfo=1
