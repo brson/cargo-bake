@@ -34,6 +34,12 @@ line numbers only. Use the `--debug` flag to turn on full debuginfo.
 Run `cargo bake --compare` to compare compile time of `cargo build
 --release` to `cargo bake`.
 
+**Note: cargo-bake requires the 2015-11-23 nightlies or later.**
+
+## Contributing
+
+Can you make Rust build faster by tweaking the optimizations? Send me a PR!
+
 ## How fast?
 
 ```
@@ -62,3 +68,7 @@ cargo bake: 50928
 
 * Experiment with controlling the exact passes
 * Experiment with turning off the alwaysinline pass
+
+## License
+
+MIT/Apache-2.0

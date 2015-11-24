@@ -1,6 +1,6 @@
 [package]
 name = "cargo-bake"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["Brian Anderson <banderson@mozilla.com>"]
 description = "Smarter default optimization settings for Rust + Cargo"
 license = "MIT/Apache-2.0"
