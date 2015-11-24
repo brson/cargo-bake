@@ -2,7 +2,7 @@
 
 Compile Rust faster with smarter defaults. Alternative to `cargo
 build`. The default bake compiles more quickly than Cargo's
-`--release` and produce reasonably fast code.
+`--release` and produces reasonably fast code.
 
 Usage:
 
@@ -21,7 +21,7 @@ like
 -C codegen-units=$NUM_CPUS_UP_TO_4
 --link-args=--fuse-ld=gold
 -Z no-verify
--C debuginfo=1
+-C debuginfo=0
 ```
 
 Besides the normal bake, `cargo-bake` also accepts a `--fast` bake,
