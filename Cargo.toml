@@ -4,6 +4,7 @@ version = "0.2.0"
 authors = ["Brian Anderson <banderson@mozilla.com>"]
 description = "Smarter default optimization settings for Rust + Cargo"
 license = "MIT/Apache-2.0"
+repository = "https://github.com/brson/cargo-bake"
 
 [dependencies]
 log = "0.3"
