@@ -80,7 +80,7 @@ extern crate env_logger;
 extern crate num_cpus;
 extern crate stopwatch;
 
-use std::env::{self, VarError};
+use std::env;
 use std::error::Error as StdError;
 use std::fmt::{self, Display, Formatter};
 use std::io;
@@ -208,7 +208,11 @@ fn get_rustc_name() -> String {
 }
 
 fn run_cargo(cargo_name: String, args: &[String]) -> Result<i32, Error>  {
-    let args = &args[1..];
+    let mut args = &args[1..];
+    // HACK
+    if args.get(0).map(|a| &**a) == Some("bake") {
+        args = &args[1..];
+    }
 
     let bake = try!(get_bake_mode_from_args(args));
     let debug = try!(get_debug_mode_from_args(args));
@@ -221,6 +225,7 @@ fn run_cargo(cargo_name: String, args: &[String]) -> Result<i32, Error>  {
 
     let cargo_args = cargo_args_for_bake_mode(bake);
 
+    info!("cargo build args: {:?}", cargo_args);
     info!("cargo args: {:?}", args);
 
     let mut child = try!(get_command(cargo_name)
